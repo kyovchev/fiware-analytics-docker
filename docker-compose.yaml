@@ -10,7 +10,10 @@ services:
       - fiware_net
     ports:
       - "1026:1026"
-    command: -dbhost mongo -corsOrigin __ALL -corsMaxAge 86400
+    entrypoint: /bin/sh -c
+    command: >
+      "rm -f /tmp/contextBroker.pid &&
+      /usr/bin/contextBroker -dbhost mongo -corsOrigin __ALL -corsMaxAge 86400"
 
   # 2. MongoDB
   mongo:
@@ -88,48 +91,9 @@ services:
       - quantumleap
     networks:
       - fiware_net
-    entrypoint: ["/bin/sh", "-c"]
-    command: >
-      "sleep 20 &&
-      curl -iX POST 'http://orion:1026/v2/subscriptions' \
-      -H 'Content-Type: application/json' \
-      -H 'fiware-service: openiot' \
-      -H 'fiware-servicepath: /' \
-      -d '{
-        \"description\": \"Notify QuantumLeap\",
-        \"subject\": { \"entities\": [{\"idPattern\": \".*\", \"type\": \"SensorDevice\"}] },
-        \"notification\": {
-          \"http\": { \"url\": \"http://quantumleap:8668/v2/notify\" },
-          \"attrs\": [ \"buttonBlue\", \"buttonRed\" ],
-          \"metadata\": [\"dateModified\"]
-        }
-      }' &&
-      curl -iX POST 'http://orion:1026/v2/subscriptions' \
-      -H 'Content-Type: application/json' \
-      -H 'fiware-service: openiot' \
-      -H 'fiware-servicepath: /' \
-      -d '{
-        \"description\": \"Notify QuantumLeap - BottleDetectionJob\",
-        \"subject\": { \"entities\": [{\"idPattern\": \".*\", \"type\": \"BottleDetectionJob\"}] },
-        \"notification\": {
-          \"http\": { \"url\": \"http://quantumleap:8668/v2/notify\" },
-          \"attrs\": [ \"jobId\", \"status\", \"bottleCount\", \"pickX\", \"pickY\", \"pickRotation\", \"error\" ],
-          \"metadata\": [\"dateModified\"]
-        }
-      }' &&
-      curl -iX POST 'http://orion:1026/v2/subscriptions' \
-      -H 'Content-Type: application/json' \
-      -H 'fiware-service: openiot' \
-      -H 'fiware-servicepath: /' \
-      -d '{
-        \"description\": \"Notify QuantumLeap - Task Pack Bottle\",
-        \"subject\": { \"entities\": [{\"id\": \"TaskPackBottle:operator-01\", \"type\": \"TaskPackBottle\"}] },
-        \"notification\": {
-          \"http\": { \"url\": \"http://quantumleap:8668/v2/notify\" },
-          \"attrs\": [ \"stage\" ],
-          \"metadata\": [\"dateModified\"]
-        }
-      }'"
+    volumes:
+      - ./init-fiware.sh:/init-fiware.sh
+    entrypoint: ["/bin/sh", "/init-fiware.sh"]
 
 networks:
   fiware_net:
